@@ -9,7 +9,7 @@ Python 3.12 is required. We use [uv](https://github.com/astral-sh/uv) for fast, 
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/litellm-directory-sync.git
+git clone https://github.com/darmawanh/litellm-directory-sync.git
 cd litellm-directory-sync
 
 # Install locked dependencies

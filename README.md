@@ -1,6 +1,6 @@
 # LiteLLM Directory Sync
 
-[![CI](https://github.com/your-org/litellm-directory-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/litellm-directory-sync/actions)
+[![CI](https://github.com/darmawanh/litellm-directory-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/darmawanh/litellm-directory-sync/actions)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -59,7 +59,7 @@ Okta (Log / Event Hooks) ──┘           │
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/litellm-directory-sync.git
+git clone https://github.com/darmawanh/litellm-directory-sync.git
 cd litellm-directory-sync
 
 # Install locked dependencies
