@@ -1,0 +1,70 @@
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[project]
+name = "identity-lifecycle"
+version = "0.1.0"
+description = "Identity lifecycle synchronization service."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+dependencies = [
+    "fastapi>=0.115,<0.116",
+    "uvicorn>=0.32,<0.33",
+    "httpx>=0.27,<0.28",
+    "pyjwt[crypto]>=2.15,<3",
+    "pydantic>=2.9,<2.10",
+    "pydantic-settings>=2.6,<2.7",
+    "sqlalchemy>=2.0,<2.1",
+    "alembic>=1.13,<1.14",
+    "psycopg[binary]>=3.2,<3.3",
+    "ldap3>=2.9,<2.10",
+    "tenacity>=9.0,<9.1",
+    "limits>=3.13,<3.14",
+    "pybreaker>=1.2,<1.3",
+    "structlog>=24.4,<24.5",
+    "prometheus-client>=0.21,<0.22",
+    "pyyaml>=6.0.3,<6.1",
+]
+
+[project.scripts]
+identity-lifecycle = "identity_lifecycle.main:main"
+
+[dependency-groups]
+dev = [
+    "testcontainers[postgres]>=4.8,<4.9",
+    "respx>=0.21,<0.22",
+    "pytest>=8.3,<8.4",
+    "ruff>=0.7,<0.8",
+    "mypy>=1.13,<1.14",
+    "pre-commit>=4.0,<4.1",
+    "types-pyyaml>=6.0,<7",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+strict = true
+warn_unused_configs = true
+show_error_codes = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "unit: tests with no I/O",
+    "integration: tests that need real infrastructure",
+    "contract: tests that prove an adapter satisfies its port",
+]

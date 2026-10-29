@@ -1,0 +1,37 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+secrets/
+.run/secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-*/
+dist/
+build/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local state
+config/config.yaml
+backup.dump
+*.dump
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Worktrees created by agents
+.claude/worktrees/

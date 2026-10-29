@@ -1,0 +1,50 @@
+# Version control
+.git/
+.gitignore
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets, certificates, and credentials (AGENTS.md §10)
+.env
+.env.*
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.pub
+
+# Local configuration overrides that may contain secrets
+config/config.yaml
+
+# Tests, operations, and documentation
+tests/
+ops/
+docs/
+
+# IDE, agent metadata, and temporary files
+.idea/
+.vscode/
+.system_generated/
+.gemini/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~

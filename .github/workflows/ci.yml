@@ -1,0 +1,59 @@
+# The four gates from ER8. Keep the commands in step with the hooks in
+# .pre-commit-config.yaml; that file is owned by T-001.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer run on the same ref supersedes the older one.
+concurrency:
+  group: "ci-${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install uv and Python 3.12
+        uses: astral-sh/setup-uv@v5
+        with:
+          # Matches .python-version and requires-python in pyproject.toml.
+          python-version: "3.12"
+          # The version that resolved uv.lock. Bump it deliberately.
+          version: "0.13.1"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install the locked environment
+        run: uv sync --locked
+
+      # One gate per step so a failure names the gate. The runner's default
+      # shell fails the step on a non-zero exit; --no-sync keeps every gate on
+      # the environment the previous step installed.
+      - name: ruff check
+        run: uv run --no-sync ruff check .
+
+      - name: ruff format --check
+        run: uv run --no-sync ruff format --check .
+
+      - name: mypy src
+        run: uv run --no-sync mypy src
+
+      - name: pytest
+        run: uv run --no-sync pytest
+
+      # A module that fails to import can let pytest exit 0 with fewer tests
+      # than expected. Collecting the unit suite makes that failure loud, and
+      # it does not name any single test file.
+      - name: Collect the unit suite
+        run: uv run --no-sync pytest --collect-only -q tests/unit

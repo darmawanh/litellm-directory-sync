@@ -1,0 +1,171 @@
+# Example configuration. Copy to config/config.yaml and edit.
+#
+# Every value below is a placeholder. No real host, tenant, DN, token, or key
+# belongs in this file:
+#   - every credential is an `os.environ/VAR` reference (NFR2);
+#   - the operator endpoints `org_url`, `server`, `base_url`, and `bind_dn` are
+#     `os.environ/VAR` references too, because they name a company host;
+#   - DNs and the AD domain use reserved `example.com` placeholders, which
+#     identify no real directory (design 1.1).
+# Startup validates this file and fails fast on a missing value (design 6, NFR2).
+#
+# config/config.yaml is git-ignored. Never commit it.
+
+general_settings:
+  master_key: os.environ/LIFECYCLE_MASTER_KEY
+
+identity_sources:
+  - source_name: corp-ad
+    source_type: ad
+    # Read-only Active Directory over LDAPS on 636 (ADR-005 §9).
+    enabled: true
+    ad:
+      # LDAPS on 636 only; certificate verification is mandatory (ADR-005 §9).
+      server: os.environ/AD_SERVER
+      domain: example.com
+      search_base: OU=AI Platform,DC=example,DC=com
+      group_dn: CN=AI-Platform-Users,OU=Groups,OU=AI Platform,DC=example,DC=com
+      bind_dn: os.environ/AD_BIND_DN
+      bind_password: os.environ/AD_BIND_PASSWORD
+      ca_cert_path: os.environ/AD_CA_CERT_PATH
+      # source_user_id is the objectGUID UUID; employeeID is a nullable link
+      # used only when unambiguous (ADR-005 §1-§4).
+      stable_id: objectGUID
+      cross_system_key: employeeID
+      attributes:
+        - mail
+        - displayName
+        - department
+        - userAccountControl
+      # usn_poll only: DirSync needs replication rights the account must not have.
+      change_feed: usn_poll
+      poll_interval_seconds: 60
+
+  - source_name: corp-okta
+    source_type: okta
+    enabled: true
+    okta:
+      org_url: os.environ/OKTA_ORG_URL
+      # Preferred service-app auth requests only the fixed read scopes
+      # okta.users.read, okta.groups.read, and okta.logs.read (ADR-001 §6).
+      oauth:
+        client_id: os.environ/OKTA_CLIENT_ID
+        key_id: os.environ/OKTA_KEY_ID
+        private_key_path: os.environ/OKTA_PRIVATE_KEY_PATH
+      group_id: 00gEXAMPLE0000000000
+      stable_id: id
+      cross_system_key: employeeNumber
+      # Primary ingestion feed: system_log or event_hook. When event_hook is
+      # configured, the API mounts the hook route and the System Log poller
+      # continues running as the always-on second feed (D-011, D-014, ADR-006).
+      change_feed: system_log
+      system_log:
+        poll_interval_seconds: 60
+        overlap_seconds: 60
+        page_limit: 200
+        requests_per_second: 2
+        burst: 4
+        # ADR-008: the watermark check fails a gap as `aged_out` when the
+        # cursor is older than this. A conservative floor, not the org's
+        # real retention, which stays unverified.
+        retention_seconds: 604800
+
+# Highest precedence wins. Equal highest fails the event. No mapped group means
+# not entitled. Every matching group is recorded in the audit log (FR35, FR36).
+group_mappings:
+  - source: corp-ad
+    group: CN=AI-Platform-Admins,OU=Groups,OU=AI Platform,DC=example,DC=com
+    role: proxy_admin
+    team: ai-platform
+    precedence: 100
+  - source: corp-ad
+    group: CN=AI-Platform-Users,OU=Groups,OU=AI Platform,DC=example,DC=com
+    role: internal_user
+    team: ai-platform
+    precedence: 10
+  - source: corp-okta
+    group_id: 00gEXAMPLE0000000000
+    role: internal_user
+    team: ai-platform
+    precedence: 10
+
+teams:
+  ai-platform:
+    create_if_missing: true
+    budget_duration: 30d
+
+budget_policy_overrides:
+  source: postgres
+  table: budget_policy_overrides
+
+budget_policies:
+  standard:
+    max_budget: 50
+    budget_duration: 30d
+  engineer:
+    max_budget: 100
+    budget_duration: 30d
+
+default_budget_policy: standard
+
+budget_mappings:
+  - source: corp-ad
+    group: CN=AI-Platform-Users,OU=Groups,OU=AI Platform,DC=example,DC=com
+    policy: standard
+  - source: corp-okta
+    group_id: 00gEXAMPLE0000000000
+    policy: standard
+  - source: any
+    attribute: department
+    map:
+      Engineering: engineer
+      Finance: standard
+
+# The adapter targets LiteLLM v1.105.0 (ADR-004). The version is an adapter
+# fact, not a config key: a different gateway version must re-run the spike.
+gateway:
+  type: litellm
+  base_url: os.environ/LITELLM_BASE_URL
+  api_key: os.environ/LITELLM_MASTER_KEY
+
+# The PostgreSQL outbox is the only event bus in v1 (ADR-002).
+event_bus:
+  type: postgres_outbox
+  table: identity_event_outbox
+  consumer_group: lifecycle-workers
+  poll_interval_seconds: 1
+  batch_size: 100
+
+reconciliation:
+  schedule: "0 * * * *"
+  dry_run: true
+  grace_period_hours: 24
+  allowlist:
+    - svc-ci
+    - svc-monitoring
+  two_miss_rule: true
+  miss_state_table: reconciliation_misses
+  batch_size: 100
+
+# Token buckets per target. Defaults from design 9.2; tune to the vendor.
+#
+# One budget, one home (ADR-009). The System Log poller's budget is NOT here: it
+# lives in `okta.system_log.requests_per_second` / `burst` above, because the
+# poller is a per-source client and `identity_sources` is a list. `rate_limits.okta`
+# covers the users and groups endpoints only. There is no `okta_system_log` block;
+# adding one is an unknown-key startup error, not a second bucket.
+rate_limits:
+  inbound:
+    requests_per_second: 50
+    burst: 100
+  okta:
+    requests_per_second: 20
+    burst: 40
+  ad:
+    queries_per_second: 5
+    burst: 10
+  litellm:
+    requests_per_second: 10
+    burst: 20
+  worker:
+    concurrency: 4
