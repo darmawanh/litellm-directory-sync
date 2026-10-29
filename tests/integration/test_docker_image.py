@@ -5,7 +5,7 @@ Proves:
 - The identity-lifecycle CLI commands (version, api, worker, scheduler, config, reconcile, sync)
   execute cleanly inside the container environment.
 - Alembic database migration tooling is available and executable in the container.
-md §3, and Ticket T-055.
+Fulfills AI_PLATFORM_IDENTITY_DESIGN.md §14, §15, AGENTS.md §3, and Ticket T-055.
 """
 
 from __future__ import annotations
@@ -23,6 +23,25 @@ def _docker_executable() -> str:
     if path is None:
         pytest.skip("docker CLI binary not found in PATH")
     return path
+
+
+def _docker_image_available() -> bool:
+    docker_bin = _docker_executable()
+    res = subprocess.run(
+        [docker_bin, "image", "inspect", IMAGE_TAG],
+        capture_output=True,
+        check=False,
+    )
+    return res.returncode == 0
+
+
+@pytest.fixture(autouse=True)
+def _require_docker_image() -> None:
+    if not _docker_image_available():
+        pytest.skip(
+            f"docker image '{IMAGE_TAG}' not found locally; "
+            f"build it with 'docker build -t {IMAGE_TAG} .'"
+        )
 
 
 def _run_docker(*args: str) -> subprocess.CompletedProcess[str]:

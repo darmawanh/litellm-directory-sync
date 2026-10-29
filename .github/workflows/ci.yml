@@ -49,6 +49,9 @@ jobs:
       - name: mypy src
         run: uv run --no-sync mypy src
 
+      - name: Build service Docker image
+        run: docker build -t identity-lifecycle:local .
+
       - name: pytest
         run: uv run --no-sync pytest
 
